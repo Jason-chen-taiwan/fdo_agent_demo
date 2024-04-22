@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>System Status Dashboard</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+      }
+      .container {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-around;
+      }
+      .stat {
+        background: #f0f0f0;
+        padding: 20px;
+        margin: 10px;
+        width: 250px;
+        border-radius: 10px;
+      }
+      h2 {
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>System Status Dashboard</h1>
+    <div class="container">
+      <div class="stat" id="cpu">
+        <h2>CPU Usage</h2>
+        <p>Loading...</p>
+      </div>
+      <div class="stat" id="memory">
+        <h2>Memory</h2>
+        <p>Loading...</p>
+      </div>
+      <div class="stat" id="disk">
+        <h2>Disk Usage</h2>
+        <p>Loading...</p>
+      </div>
+      <div class="stat" id="network">
+        <h2>Network Traffic</h2>
+        <p>Loading...</p>
+      </div>
+    </div>
+
+    <script>
+      function fetchData() {
+        ["cpu", "memory", "disk", "network"].forEach((type) => {
+          fetch(`http://localhost:8000/${type}`)
+            .then((response) => response.json())
+            .then((data) => {
+              const element = document.getElementById(type);
+              element.querySelector("p").innerText = JSON.stringify(
+                data,
+                null,
+                2
+              );
+            })
+            .catch((error) => {
+              document.getElementById(type).querySelector("p").innerText =
+                "Error fetching data";
+            });
+        });
+      }
+
+      // Fetch data every 5 seconds
+      fetchData();
+      setInterval(fetchData, 5000);
+    </script>
+  </body>
+</html>
