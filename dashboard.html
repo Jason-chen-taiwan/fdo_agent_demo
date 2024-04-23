@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>System Status Dashboard</title>
@@ -30,45 +32,120 @@
     <div class="container">
       <div class="stat" id="cpu">
         <h2>CPU Usage</h2>
+        <canvas id="cpuChart"></canvas>
         <p>Loading...</p>
       </div>
       <div class="stat" id="memory">
         <h2>Memory</h2>
+        <canvas id="memoryChart"></canvas>
         <p>Loading...</p>
       </div>
       <div class="stat" id="disk">
         <h2>Disk Usage</h2>
+        <canvas id="diskChart"></canvas>
         <p>Loading...</p>
       </div>
       <div class="stat" id="network">
         <h2>Network Traffic</h2>
+        <canvas id="networkChart"></canvas>
         <p>Loading...</p>
       </div>
     </div>
 
     <script>
+      const charts = {}; // 用於存儲圖表實例的對象
+    
       function fetchData() {
-        ["cpu", "memory", "disk", "network"].forEach((type) => {
-          fetch(`http://localhost:8000/${type}`)
-            .then((response) => response.json())
-            .then((data) => {
-              const element = document.getElementById(type);
-              element.querySelector("p").innerText = JSON.stringify(
-                data,
-                null,
-                2
-              );
-            })
-            .catch((error) => {
-              document.getElementById(type).querySelector("p").innerText =
-                "Error fetching data";
-            });
-        });
-      }
+  ["cpu", "memory", "disk", "network"].forEach((type) => {
+    fetch(`http://localhost:8000/${type}`)
+      .then(response => response.json())
+      .then(data => {
+        const element = document.getElementById(type);
+        const ctx = element.querySelector('canvas').getContext('2d');
+        element.querySelector("p").innerText = JSON.stringify(data, null, 2);
 
-      // Fetch data every 5 seconds
+        let chartType = 'pie';  // 默认图表类型为圆饼图
+        let labels = ["Used", "Free"];  // 通常的圆饼图标签
+        let dataPoints = [data.Used, data.Free];  // 对应于Used和Free的数据点
+        let datasets = [];
+
+        // 特殊处理 CPU 数据
+        if (type === 'cpu') {
+          chartType = 'bar';  // 使用柱状图显示 CPU 使用率
+          labels = ["CPU Usage"];
+          let cpuUsage = parseFloat(data["CPU Usage"].replace('%', ''));
+          dataPoints = [cpuUsage];
+          datasets = [{
+            label: 'CPU Usage (%)',
+            data: dataPoints,
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)'
+          }];
+        } else if (type === 'network') {
+          chartType = 'bar';
+          labels = Object.keys(data);
+          let dataPointsSent = Object.values(data).map(value => value['Bytes Sent']);
+          let dataPointsReceived = Object.values(data).map(value => value['Bytes Received']);
+          datasets = [{
+            label: 'Bytes Sent',
+            data: dataPointsSent,
+            backgroundColor: 'rgba(255, 99, 132, 0.2)',
+            borderColor: 'rgba(255, 99, 132, 1)'
+          }, {
+            label: 'Bytes Received',
+            data: dataPointsReceived,
+            backgroundColor: 'rgba(54, 162, 235, 0.2)',
+            borderColor: 'rgba(54, 162, 235, 1)'
+          }];
+        } else {
+          datasets = [{
+            label: type === 'memory' ? 'Memory (GB)' : 'Disk (GB)',
+            data: dataPoints,
+            backgroundColor: ['rgba(255, 99, 132, 0.2)', 'rgba(54, 162, 235, 0.2)'],
+            borderColor: ['rgba(255, 99, 132, 1)', 'rgba(54, 162, 235, 1)']
+          }];
+        }
+
+        if (charts[type]) {
+          charts[type].data.labels = labels;
+          charts[type].data.datasets = datasets;
+          charts[type].update();
+        } else {
+          charts[type] = new Chart(ctx, {
+            type: chartType,
+            data: {
+              labels: labels,
+              datasets: datasets
+            },
+            options: {
+              responsive: true,
+              plugins: {
+                legend: {
+                  position: 'top',
+                }
+              },
+              scales: chartType === 'bar' ? {
+                y: {
+                  beginAtZero: true
+                }
+              } : {}
+            }
+          });
+        }
+      })
+      .catch(error => {
+        element.querySelector("p").innerText = "Error fetching data";
+        console.error('Error fetching data for:', type, error);
+      });
+  });
+}
+
+
+
       fetchData();
-      setInterval(fetchData, 5000);
+      setInterval(fetchData, 10000);
+
     </script>
+    
   </body>
 </html>
